@@ -16,7 +16,7 @@ def train_env_model(
     batch_size=16,
     lr=1e-3,
     weight_decay=1e-5,
-    save_path="training_env_results.png"
+    save_path="results/training_env_results.png"
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"--- Training Upgraded Environmental Model ({model_type.upper()}) on {device} ---")

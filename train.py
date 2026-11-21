@@ -10,7 +10,7 @@ from model import Galiana
 from model_env import GalianaGxE
 from dataset import GalianaDataset
 
-def train(num_epochs=10, batch_size=10, lr=1e-3, weight_decay=1e-5, use_env=True, save_path="training_results.png"):
+def train(num_epochs=10, batch_size=10, lr=1e-3, weight_decay=1e-5, use_env=True, save_path="results/training_results.png"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Starting training on {device} (use_env={use_env})...")
 
