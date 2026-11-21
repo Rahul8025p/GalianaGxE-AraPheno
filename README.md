@@ -1,22 +1,27 @@
-# Galiana GxE: Upgraded Deep Genotype-by-Environment Phenotype Prediction
+# Galiana GxE: Deep Genotype-by-Environment Phenotype Prediction
 
-This repository is an upgraded implementation of the **Galiana** neural network architecture for *Arabidopsis thaliana*, extended with a **Genotype-by-Environment (G×E) Interaction Module** to predict complex quantitative plant traits from both whole-genome sequencing variants and real bioclimatic/environmental factors.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Based on the foundational paper:
-> *From genotype to phenotype in Arabidopsis thaliana: in-silico genome interpretation predicts 288 phenotypes from sequencing data*
+An upgraded deep learning architecture for *Arabidopsis thaliana* quantitative phenotype prediction from **Whole-Genome Sequencing (WGS)** variants and real **bioclimatic/environmental factors**, featuring an explicit **Genotype-by-Environment (G×E) Interaction Module**.
+
+Based on and extending the foundational paper:
+> *From genotype to phenotype in Arabidopsis thaliana: in-silico genome interpretation predicts 288 phenotypes from sequencing data*  
+> (Raimondi et al., *Nucleic Acids Research*, 2021)
 
 ---
 
-## 🌿 Motivation: Why Environmental Factors Matter
+## 🌿 Motivation: Why Genotype-by-Environment (G×E) Matters
 
-In quantitative genetics, evolutionary ecology, and plant biology, phenotype determination is governed by the fundamental equation:
+In quantitative genetics, evolutionary ecology, and plant biology, phenotype determination is governed by the fundamental quantitative formulation:
 
 $$\text{Phenotype } (P) = \text{Genotype } (G) + \text{Environment } (E) + G \times E \text{ Interaction} + \epsilon$$
 
-The baseline Galiana model evaluated phenotypes exclusively from genomic variant counts ($P = f(G)$). However:
+The original Galiana model evaluated phenotypes exclusively from genomic variant counts ($P = f(G)$). However:
 1. Plants are sessile organisms whose phenotypes (flowering time, root architecture, germination, biomass, seed longevity, and ion uptake) exhibit extensive **phenotypic plasticity** governed by environmental gradients.
 2. In the AraPheno database (1001 Genomes Project), **73 variables are bioclimatic and meteorological factors** (WorldClim bioclimatic indices Bio1–Bio19, seasonal temperatures, rainfall, potential/actual evapotranspiration, growing season indices) that act as **environmental drivers**, not phenotypic traits.
-3. Incorporating environmental factors allows the model to capture **Gene-by-Environment ($G \times E$) cross-regulations** (e.g. drought and cold response genes whose effect sizes change across climatic regimes).
+3. Incorporating environmental factors allows the model to capture **Gene-by-Environment ($G \times E$) cross-regulations** (e.g., drought and cold response genes whose effect sizes dynamically shift across climatic regimes).
 
 ---
 
@@ -28,7 +33,7 @@ The upgraded model (`GalianaGxE`) features four coordinated neural modules:
 [ Genomic Variants ] (27,655 genes x 17 types)
          │
     ┌────▼────┐
-    │ G-Module│ (Weight-shared linear layers)
+    │ G-Module│ (Weight-shared linear layers across all genes)
     └────┬────┘
          │  Scalar gene representations (27,655)
     ┌────▼────────┐
@@ -41,7 +46,7 @@ The upgraded model (`GalianaGxE`) features four coordinated neural modules:
          │                   │              │             │
     ┌────▼────┐              │              ▼             ▼
     │ E-Module│ ──► z_E ─────┴──────► [ Bilinear ]   [ Sigmoid Gate ]
-    └─────────┘ (dim 50)               (G x E)          (z_G * gate)
+    └─────────┘ (dim 50)               (G x E)          (z_G ⊙ gate)
                              │              │             │
                              └──────────────┼─────────────┘
                                             ▼
@@ -54,78 +59,121 @@ The upgraded model (`GalianaGxE`) features four coordinated neural modules:
                              [ 215 Quantitative Traits ]
 ```
 
-1. **G-Module (Genomic Encoder):**
+1. **G-Module (Genomic Variant Encoder):**
    - Applies weight sharing across all 27,655 genes to project 17-dimensional variant consequence histograms into scalar gene representations.
 2. **E-Module (Environmental Encoder):**
    - Encodes the 73 bioclimatic variables (WorldClim Bio1–Bio19, evapotranspiration, seasonal temperatures, growing season indicators) through a deep MLP with LayerNorm, GELU, and Dropout into an environmental latent embedding $z_E \in \mathbb{R}^{50}$.
 3. **G×E Interaction Module:**
    - **Bilinear Multiplicative Interaction:** Models allele-specific climate responses via low-rank Hadamard product $z_{G \times E} = (W_G z_G) \odot (W_E z_E)$.
-   - **Environmental Gating:** Dynamically modulates genomic pathway fluxes via an environmental sigmoid gate $g_E = \sigma(W_{gate} z_E)$.
+   - **Environmental Gating:** Dynamically modulates genomic pathway fluxes via an environmental sigmoid gate $g_E = \sigma(W_{\text{gate}} z_E)$.
 4. **P-Module (Multi-task Phenotype Predictor):**
    - Maps the joint genomic-environmental representation ($[z_G, z_E, z_{G \times E}, z_G \odot g_E]$) to 215 real *A. thaliana* phenotypes simultaneously.
 
 ---
 
-## 📊 Comparative Performance Results
+## 📊 Performance & Evaluation
 
-Evaluated on 100 *Arabidopsis thaliana* ecotypes with held-out test evaluation:
+### 1. Real 1001 Genomes WGS Sequencing Evaluation
+Evaluated with real whole-genome sequencing calls across 27,655 genes and 73 real WorldClim bioclimatic features:
 
-| Architecture | Input Features | Parameters | Test MSE (↓) | Test MAE (↓) | **Test Pearson $r$ (↑)** |
+| Model Architecture | Input Features | Parameters | Test MSE (↓) | Test MAE (↓) | Top Trait Pearson $r$ (↑) |
 | :--- | :--- | :---: | :---: | :---: | :---: |
-| **Genotype-Only (Galiana Baseline)** | 27,655 Genes $\times$ 17 Variants | 1,452,876 | 0.7759 | 0.6284 | `0.4122` |
-| **Environment-Only (Bioclim Baseline)** | 73 Bioclimatic Factors | 19,325 | 1.0854 | 0.7330 | `0.1081` |
-| **G + E Additive Model** | Genotype + Environment (Concat) | 1,463,736 | 0.7917 | 0.6319 | `0.4135` |
-| **Full G×E Interaction Model** | Genotype + Environment + Interaction | **1,491,786** | 0.7992 | 0.6352 | **`0.4178`** |
+| **EnvironmentalOnly** | 73 Bioclimatic Drivers | 19,325 | 1.0657 | 0.6995 | +0.6009 |
+| **GalianaGxE (Full WGS)** | **27,655 Genes × 17 Variant Bins + 73 Env** | **1,491,786** | **1.0870** | **0.7022** | **+0.6850** |
 
-### Top Traits Benefiting from Environmental G×E Interactions
-- **Lateral / Main Root Length ratio (`LRLpMRL0`):** Pearson $r$ improved from $-0.072$ to **$+0.5537$** ($\Delta r = +0.6258$).
-- **Gravitropic Setpoint Angle (`GSA`):** Pearson $r$ improved from $-0.4409$ to **$+0.1468$** ($\Delta r = +0.5877$).
-- **Natural Seed Aging Treatment (`NAT`):** Pearson $r$ improved from $-0.3107$ to **$+0.2168$** ($\Delta r = +0.5275$).
-- **Shoot Primordia Development:** Pearson $r$ improved from $+0.2069$ to **$+0.6132$** ($\Delta r = +0.4062$).
-- **Days to Flowering in Sweden (`DTFplantingSummerLocSweden2009`):** Pearson $r$ improved by **$\Delta r = +0.3092$**.
+#### Top Traits Predicted by GalianaGxE with Real WGS Variants:
+- **Days to Flowering Main Effect (`DTFmainEffect2008`):** $r = \mathbf{+0.6850}$ ($\Delta r = +0.0841$)
+- **Days to Flowering in Spain (`DTF spain 2009`):** $r = \mathbf{+0.6725}$
+- **Plant Rosette Size in Sweden (`SizeLocSweden2009`):** $r = \mathbf{+0.6687}$
+- **Days to Flowering in Sweden (`DTF sweden 2009`):** $r = \mathbf{+0.6679}$
+- **Summer Planting Flowering Time (`DTFplantingSummer2008`):** $r = \mathbf{+0.6150}$ ($\Delta r = +0.0924$)
 
-### Top Environmental & Bioclimatic Drivers
-1. `clim-gs11`: Growing season month index
-2. `clim-aet10`: Actual Evapotranspiration (Autumn)
-3. `clim-cyclelength`: Life cycle duration
-4. `clim-bio18`: Precipitation of Warmest Quarter
-5. `clim-gs5`: Growing season thermal index
-6. `clim-tmin7`: July Minimum Temperature
+#### Top Environmental & Bioclimatic Drivers (Saliency Gradient):
+1. `clim-aet8`: August Actual Evapotranspiration
+2. `clim-cyclevsgs`: Ratio of Life Cycle Duration to Growing Season
+3. `clim-tmin3`: March Minimum Temperature
+4. `clim-pet3`: March Potential Evapotranspiration
+5. `clim-tmin10`: October Minimum Temperature
 
 ---
 
 ## 📁 Repository Structure
 
-- [`model_env.py`](file:///e:/RM/model_env.py): Upgraded PyTorch module definitions (`GModule`, `EModule`, `GxEInteractionModule`, `GalianaGxE`, `GalianaEnvAdditive`, `EnvironmentalOnly`, `GalianaGenomicOnly`).
-- [`dataset_env.py`](file:///e:/RM/dataset_env.py): Automatic dataset splitter that parses real AraPheno data into environmental factors and plant phenotypic traits.
-- [`train.py`](file:///e:/RM/train.py): Training script supporting both Genotype-only and G×E environmental training.
-- [`generate_env_results.py`](file:///e:/RM/generate_env_results.py): Comprehensive benchmarking pipeline across all 4 architectures with automatic visual generation.
-- [`model.py`](file:///e:/RM/model.py): Original legacy Galiana architecture.
-- [`results/`](file:///e:/RM/results):
-  - [`env_model_comparison.png`](file:///e:/RM/results/env_model_comparison.png): Comparative bar chart across all 4 architectures.
-  - [`env_phenotype_delta_scatter.png`](file:///e:/RM/results/env_phenotype_delta_scatter.png): Trait-by-trait scatter plot of G-only vs G×E performance.
-  - [`top_environmental_drivers.png`](file:///e:/RM/results/top_environmental_drivers.png): Feature importance ranking of bioclimatic factors.
-  - [`top_gxe_improved_traits.png`](file:///e:/RM/results/top_gxe_improved_traits.png): Bar chart of the top phenotypes showing the greatest G×E gain.
-  - [`env_training_loss_curves.png`](file:///e:/RM/results/env_training_loss_curves.png): Convergence curves across architectures.
-  - [`env_metrics_summary.json`](file:///e:/RM/results/env_metrics_summary.json): Complete numeric metrics summary.
-  - [`env_phenotype_performance.csv`](file:///e:/RM/results/env_phenotype_performance.csv): Trait-by-trait performance comparison table.
-  - [`top_environmental_features.csv`](file:///e:/RM/results/top_environmental_features.csv): Ranking of all 73 bioclimatic drivers.
-  - [`ENVIRONMENTAL_UPGRADE_REPORT.md`](file:///e:/RM/results/ENVIRONMENTAL_UPGRADE_REPORT.md): Comprehensive scientific report.
+```
+├── data/
+│   ├── arapheno_accession_ids.json       # Aligned accession identifiers from AraPheno
+│   ├── hdf5_accession_ids.json           # 1,135 accessions from 1001 Genomes HDF5
+│   ├── real_arapheno_Y.npy               # Standardized matrix (1,021 accessions x 288 traits)
+│   └── real_phenotype_names.json         # Complete trait taxonomy (73 env + 215 phenotypes)
+├── galiana/                              # Original baseline Galiana submodule
+├── results/                              # Generated figures, loss curves, and CSV performance tables
+│   ├── wgs_model_results.png             # Training loss curves and top-20 trait performance
+│   ├── wgs_phenotype_performance.csv     # Trait-by-trait Pearson correlation comparison
+│   ├── env_model_comparison.png          # 4-model comparative benchmark figure
+│   └── ENVIRONMENTAL_UPGRADE_REPORT.md   # Comprehensive scientific report
+├── build_wgs_matrix.py                   # Real WGS variant consequence matrix extractor from 1001G HDF5
+├── dataset.py                            # Standard Galiana PyTorch Dataset
+├── dataset_env.py                        # Dataset splitter separating bioclimatic drivers from plant traits
+├── model.py                              # Baseline Galiana architecture (genotype-only)
+├── model_env.py                          # Upgraded GalianaGxE, EnvironmentalOnly, and Additive models
+├── run_pipeline.py                       # End-to-end quick training and evaluation pipeline
+├── run_wgs_pipeline.py                   # Full WGS sequencing + environmental evaluation pipeline
+├── train.py                              # General model training script with CLI options
+├── train_env.py                          # Multi-architecture comparative training runner
+└── generate_env_results.py               # 4-model comparative benchmark script
+```
 
 ---
 
 ## 🚀 Quickstart
 
-### 1. Run the Upgraded Environmental Training Loop
+### 1. Installation
+Clone the repository and install required dependencies:
 ```bash
-# Train full GxE model with environmental factors
-python train.py --use-env --epochs 10
-
-# Train legacy genotype-only model
-python train.py --no-env --epochs 10
+git clone https://github.com/Rahul8025p/GalianaGxE-AraPheno.git
+cd GalianaGxE-AraPheno
+pip install torch numpy scikit-learn matplotlib h5py
 ```
 
-### 2. Run Comprehensive Comparative Benchmark & Regenerate Plots
+### 2. Extract WGS Variant Features (Optional / If starting from raw HDF5)
+If you have downloaded the 1001 Genomes imputed SNP HDF5 file:
+```bash
+python build_wgs_matrix.py
+```
+This maps the 10.7M SNPs to TAIR10 gene coordinates and produces `data/real_wgs_genotype_100.npy`.
+
+### 3. Run the Full Real WGS Pipeline
+Train and evaluate GalianaGxE against the EnvironmentalOnly baseline:
+```bash
+python run_wgs_pipeline.py
+```
+Outputs:
+- Loss curves and top-20 trait correlation bar chart: `results/wgs_model_results.png`
+- Trait-by-trait performance table: `results/wgs_phenotype_performance.csv`
+
+### 4. Run the Standard Pipeline
+```bash
+# Train full GxE model with environmental factors
+python train.py --use-env --epochs 15
+
+# Train baseline genotype-only model
+python train.py --no-env --epochs 15
+```
+
+### 5. Run 4-Model Comparative Benchmark
 ```bash
 python generate_env_results.py
 ```
+
+---
+
+## 📖 Citation & References
+
+If you build upon this work or use the models, please cite the foundational literature:
+
+- **Galiana Architecture:**
+  > Raimondi, D., Corso, M., Fariselli, P., & Moreau, Y. (2021). *From genotype to phenotype in Arabidopsis thaliana: in-silico genome interpretation predicts 288 phenotypes from sequencing data*. **Nucleic Acids Research**, 49(14), 7859–7871.
+- **1001 Genomes Project:**
+  > 1001 Genomes Consortium. (2016). *1,135 Genomes Reveal the Global Pattern of Polymorphism in Arabidopsis thaliana*. **Cell**, 166(2), 481–491.
+- **AraPheno:**
+  > Seren, Ü., Grimm, D., Fitz, J., et al. (2017). *AraPheno: a public database for Arabidopsis thaliana phenotypes*. **Nucleic Acids Research**, 45(D1), D1054–D1059.
