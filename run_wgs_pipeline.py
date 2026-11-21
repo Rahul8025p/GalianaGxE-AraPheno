@@ -6,7 +6,7 @@ Full GalianaGxE pipeline on REAL data:
   - X_env  : real AraPheno bioclimatic features     (N x 73)           [REAL]
   - Y_pheno: real AraPheno plant phenotypes          (N x 215)          [REAL]
 
-Run build_genotype_matrix.py first to generate data/real_genotype_X.npy
+Run build_wgs_matrix.py first to generate data/real_wgs_genotype_100.npy
 """
 
 import os, sys, json, csv
@@ -109,7 +109,7 @@ def main():
     banner("1 / 6  Loading Genotype Data")
     if not os.path.exists(GENO_NPY):
         print(f"  ERROR: {GENO_NPY} not found!")
-        print("  Please run:  python build_genotype_matrix.py  first.")
+        print("  Please run:  python build_wgs_matrix.py  first.")
         sys.exit(1)
 
     X_geno_all = np.load(GENO_NPY)   # (N, 27655, 17) float32

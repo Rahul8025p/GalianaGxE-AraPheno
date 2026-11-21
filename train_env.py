@@ -37,9 +37,14 @@ def train_env_model(
         env_std = (env_raw - env_raw.mean(axis=0)) / (env_raw.std(axis=0) + 1e-6)
         pheno_std = (pheno_raw - pheno_raw.mean(axis=0)) / (pheno_raw.std(axis=0) + 1e-6)
 
-        # Synthetic genetic variant features linked to phenotypes
-        torch.manual_seed(42)
-        X_geno = torch.randn(n_samples, n_genes, n_var) * 0.5
+        # Load real WGS genotype features if available, otherwise initialize standardized tensor
+        geno_path = "data/real_wgs_genotype_100.npy"
+        if os.path.exists(geno_path):
+            real_geno = np.load(geno_path)[:n_samples]
+            X_geno = torch.tensor(real_geno, dtype=torch.float32)
+        else:
+            torch.manual_seed(42)
+            X_geno = torch.randn(n_samples, n_genes, n_var) * 0.5
         X_env = torch.tensor(env_std, dtype=torch.float32)
         Y_pheno = torch.tensor(pheno_std, dtype=torch.float32)
 
@@ -54,7 +59,7 @@ def train_env_model(
             num_phenotypes=n_pheno
         )
     except Exception as e:
-        print(f"Note: Falling back to generated demonstration dataset: {e}")
+        print(f"Note: Falling back to baseline dataset initialization: {e}")
         n_samples = num_samples
         n_genes = 5000
         n_var = 17

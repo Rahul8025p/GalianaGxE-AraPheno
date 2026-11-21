@@ -54,7 +54,12 @@ class GalianaDataset(Dataset):
             if include_env:
                 self.X_env = torch.randn(num_samples, 73)
 
-        self.X_geno = torch.randn(len(self.y), num_genes, num_variant_types) * 0.5
+        wgs_npy = "data/real_wgs_genotype_100.npy"
+        if os.path.exists(wgs_npy):
+            real_geno = np.load(wgs_npy)[:len(self.y)]
+            self.X_geno = torch.tensor(real_geno, dtype=torch.float32)
+        else:
+            self.X_geno = torch.randn(len(self.y), num_genes, num_variant_types) * 0.5
 
     def __len__(self):
         return len(self.y)

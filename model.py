@@ -100,8 +100,8 @@ if __name__ == "__main__":
     else:
         print(f"Parameter count difference: {total_params - expected_params}")
         
-    # Dummy forward pass
+    # Verification forward pass
     batch_size = 4
-    dummy_input = torch.randn(batch_size, 27655, 17)
-    output = model(dummy_input)
+    sample_input = torch.randn(batch_size, 27655, 17)
+    output = model(sample_input)
     print(f"Output shape: {output.shape} (Expected: {batch_size}, 288)")

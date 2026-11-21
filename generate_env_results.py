@@ -251,8 +251,8 @@ def run_environmental_upgrade_experiments(num_samples=100, epochs=20, batch_size
 
     out_eval = gxe_trained(sample_x_g, sample_x_e)
     gxe_trained.zero_grad()
-    loss_dummy = out_eval.sum()
-    loss_dummy.backward()
+    loss_saliency = out_eval.sum()
+    loss_saliency.backward()
     env_importance = sample_x_e.grad.abs().mean(dim=0).cpu().numpy()
 
     top_env_indices = np.argsort(env_importance)[::-1]

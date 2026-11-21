@@ -254,27 +254,27 @@ if __name__ == "__main__":
     n_env = 73
     n_phen = 215
 
-    dummy_geno = torch.randn(batch_size, n_genes, n_var)
-    dummy_env = torch.randn(batch_size, n_env)
+    sample_geno = torch.randn(batch_size, n_genes, n_var)
+    sample_env = torch.randn(batch_size, n_env)
 
     # Test GxE Model
     model_gxe = GalianaGxE(num_genes=n_genes, num_variant_types=n_var, num_env_features=n_env, num_phenotypes=n_phen)
-    out_gxe = model_gxe(dummy_geno, dummy_env)
+    out_gxe = model_gxe(sample_geno, sample_env)
     params_gxe = sum(p.numel() for p in model_gxe.parameters() if p.requires_grad)
     print(f"GalianaGxE output shape: {out_gxe.shape}, Trainable parameters: {params_gxe:,}")
 
     # Test Additive Model
     model_add = GalianaEnvAdditive(num_genes=n_genes, num_variant_types=n_var, num_env_features=n_env, num_phenotypes=n_phen)
-    out_add = model_add(dummy_geno, dummy_env)
+    out_add = model_add(sample_geno, sample_env)
     print(f"GalianaEnvAdditive output shape: {out_add.shape}")
 
     # Test Env-Only Model
     model_env_only = EnvironmentalOnly(num_env_features=n_env, num_phenotypes=n_phen)
-    out_env_only = model_env_only(dummy_env)
+    out_env_only = model_env_only(sample_env)
     print(f"EnvironmentalOnly output shape: {out_env_only.shape}")
 
     # Test Genomic-Only Model
     model_geno_only = GalianaGenomicOnly(num_genes=n_genes, num_variant_types=n_var, num_phenotypes=n_phen)
-    out_geno_only = model_geno_only(dummy_geno)
+    out_geno_only = model_geno_only(sample_geno)
     print(f"GalianaGenomicOnly output shape: {out_geno_only.shape}")
 

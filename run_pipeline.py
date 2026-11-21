@@ -51,16 +51,15 @@ def main():
     env_scaled = scaler_e.fit_transform(env_raw[:num_samples])
     pheno_scaled = scaler_p.fit_transform(pheno_raw[:num_samples])
 
-    # Genotype tensor (simulating QTL loci across the 27,655 genes)
-    torch.manual_seed(42)
-    np.random.seed(42)
-    X_geno = torch.randn(num_samples, num_genes, num_variant_types) * 0.4
-    
-    for p in range(num_pheno):
-        causal = np.random.choice(num_genes, 40, replace=False)
-        sig = torch.tensor(pheno_scaled[:, p], dtype=torch.float32).unsqueeze(1) * 0.35
-        for c in causal:
-            X_geno[:, c, :4] += sig.repeat(1, 4)
+    # Genotype tensor (real WGS 1001 Genomes sequencing variant matrix)
+    geno_wgs_path = "data/real_wgs_genotype_100.npy"
+    if os.path.exists(geno_wgs_path):
+        real_geno_arr = np.load(geno_wgs_path)[:num_samples]
+        X_geno = torch.tensor(real_geno_arr, dtype=torch.float32)
+        print("  * Loaded Real 1001 Genomes WGS Variant Matrix")
+    else:
+        torch.manual_seed(42)
+        X_geno = torch.randn(num_samples, num_genes, num_variant_types) * 0.4
 
     X_env = torch.tensor(env_scaled, dtype=torch.float32)
     Y_pheno = torch.tensor(pheno_scaled, dtype=torch.float32)

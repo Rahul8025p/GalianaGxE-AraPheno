@@ -1,6 +1,6 @@
 """
-build_real_wgs_matrix.py
-========================
+build_wgs_matrix.py
+===================
 Builds a real WGS Genotype Variant Matrix (N_accessions x 27,655 genes x 17 variant types)
 directly from the 1001 Genomes Project Imputed SNP Matrix (imputed_snps_binary.hdf5)
 and Arabidopsis thaliana TAIR10 gene coordinates (Arabidopsis_thaliana.TAIR10.63.gff3.gz).
