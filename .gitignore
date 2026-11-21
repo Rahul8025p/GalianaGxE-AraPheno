@@ -21,8 +21,14 @@ env/
 .vscode/
 .idea/
 
-# Data (large binary files — keep .npy small ones, exclude huge ones)
+# Data (large binary files — keep small reference files, exclude raw large genomic binaries >100MB)
 *.npy.bak
+data/1001_SNP_MATRIX/
+data/*.tar.gz
+data/*.gff3.gz
+data/real_wgs_genotype_*.npy
+scratch_check.py
+test_gff.py
 
 # OS
 .DS_Store
