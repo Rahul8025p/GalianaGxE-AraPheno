@@ -1,0 +1,30 @@
+GALIANA MODEL ARCHITECTURE SUMMARY (REAL ARAPHENO DATASET)
+=========================================================
+Total Trainable Parameters: 1,456,599
+Paper Target Parameter Count: 1,456,599
+Match: YES
+
+Galiana(
+  (g_module): GModule(
+    (dropout): Dropout(p=0.1, inplace=False)
+    (linear1): Linear(in_features=17, out_features=50, bias=True)
+    (layer_norm): LayerNorm((50,), eps=1e-05, elementwise_affine=True)
+    (tanh): Tanh()
+    (linear2): Linear(in_features=50, out_features=1, bias=True)
+  )
+  (p_module): PModule(
+    (layers): Sequential(
+      (0): LayerNorm((27655,), eps=1e-05, elementwise_affine=True)
+      (1): Dropout(p=0.2, inplace=False)
+      (2): Linear(in_features=27655, out_features=50, bias=True)
+      (3): LayerNorm((50,), eps=1e-05, elementwise_affine=True)
+      (4): Tanh()
+      (5): Dropout(p=0.2, inplace=False)
+      (6): Linear(in_features=50, out_features=50, bias=True)
+      (7): LayerNorm((50,), eps=1e-05, elementwise_affine=True)
+      (8): Tanh()
+      (9): Dropout(p=0.2, inplace=False)
+      (10): Linear(in_features=50, out_features=288, bias=True)
+    )
+  )
+)

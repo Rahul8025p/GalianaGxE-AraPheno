@@ -1,0 +1,17 @@
+{
+    "trainable_parameters": 1456599,
+    "dataset_source": "Real AraPheno Database (1001 Genomes Project)",
+    "num_total_samples": 1021,
+    "num_train_samples": 817,
+    "num_test_samples": 204,
+    "num_genes": 27655,
+    "num_variant_types": 17,
+    "num_phenotypes": 288,
+    "epochs": 30,
+    "final_train_loss_mse": 0.6098,
+    "testing_set_evaluation_mse": 0.3143,
+    "testing_set_evaluation_mae": 0.3375,
+    "testing_set_average_pearson_r": 0.3207,
+    "top_salient_gene": "AT20682G",
+    "top_salient_gene_score": 0.001962
+}

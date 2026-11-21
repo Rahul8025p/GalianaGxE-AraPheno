@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# Data (large binary files — keep .npy small ones, exclude huge ones)
+*.npy.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Galiana submodule git files are tracked via galiana/

@@ -1,0 +1,15 @@
+GENOTYPE-BY-ENVIRONMENT (GxE) UPGRADE EXPERIMENT SUMMARY
+=================================================================
+dataset_name: Arabidopsis thaliana AraPheno + Bioclimatic Dataset
+num_accessions_total: 100
+num_accessions_train: 80
+num_accessions_test: 20
+num_environmental_factors: 73
+num_plant_phenotypes: 215
+num_genes: 27655
+num_variant_types: 17
+epochs: 20
+models_evaluated: {'genotype_only_baseline': {'trainable_parameters': 1452876, 'test_mse': 0.7759, 'test_mae': 0.6284, 'test_pearson_r': 0.4122, 'test_r2': 0.238}, 'environment_only_baseline': {'trainable_parameters': 19325, 'test_mse': 1.0854, 'test_mae': 0.733, 'test_pearson_r': 0.1081, 'test_r2': -0.066}, 'additive_g_plus_e': {'trainable_parameters': 1463736, 'test_mse': 0.7917, 'test_mae': 0.6319, 'test_pearson_r': 0.4135, 'test_r2': 0.2225}, 'full_gxe_interaction': {'trainable_parameters': 1491786, 'test_mse': 0.7992, 'test_mae': 0.6352, 'test_pearson_r': 0.4178, 'test_r2': 0.215}}
+gxe_over_genotype_improvement: {'delta_pearson_r': 0.0056, 'delta_mse_reduction': -0.0233, 'percent_r_gain': 1.36}
+top_environmental_drivers: ['clim-gs11', 'clim-aet10', 'clim-cyclelength', 'clim-bio18', 'clim-gs5']
+top_gxe_responsive_traits: ['LRLpMRL0', 'Gravitropic setpoint angle (GSA)', 'NAT (Natural seed Aging Treatment)', 'Metals in stomata', 'shoot primordia 15d protocol a']

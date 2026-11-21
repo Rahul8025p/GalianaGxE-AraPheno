@@ -1,0 +1,6 @@
+Model,Parameters,Test MSE,Test MAE,Pearson r
+Genotype-only (baseline),1452876,0.7759,0.6284,0.4122
+Environment-only,19325,1.0854,0.7330,0.1081
+G + E additive,1463736,0.7917,0.6319,0.4135
+Full GxE interaction,1491786,0.7992,0.6352,0.4178
+
