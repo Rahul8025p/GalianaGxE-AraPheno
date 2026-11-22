@@ -89,10 +89,10 @@ def main():
     print(f"  * Total Trainable Parameters: {total_params:,}")
     print(f"  * Architecture Modules:")
     print(f"      - G-Module (Genomic Variant Shared Encoder): Linear(17 -> 50) -> LayerNorm -> Tanh -> Linear(50 -> 1)")
-    print(f"      - Genomic Latent Projection: Linear(27655 -> 50) -> LayerNorm -> Tanh")
+    print(f"      - Genomic Latent Projection: Linear(27655 -> 50) -> Tanh")
     print(f"      - E-Module (Environmental Encoder): Linear(73 -> 64) -> GELU -> Linear(64 -> 50)")
-    print(f"      - GxE Interaction Module: Bilinear Cross-Term (50) + Environmental Sigmoid Gate (50)")
-    print(f"      - P-Module (Phenotype Predictor): Fused(200) -> Dense(100) -> Dense(50) -> Output({num_pheno})")
+    print(f"      - GxE Interaction Module: Bilinear Cross-Term (50) [Gate removed]")
+    print(f"      - P-Module (Phenotype Predictor): Fused(150) -> Dense(100) -> Dense(50) -> Output({num_pheno})")
 
     # 5. Training Loop
     epochs = 10

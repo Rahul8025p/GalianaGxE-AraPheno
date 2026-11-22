@@ -55,18 +55,16 @@ class GxEInteractionModule(nn.Module):
     """
     Genotype-by-Environment (GxE) Interaction Layer:
     Captures non-linear phenotypic plasticity and climate-adaptive genetic effects.
-    Combines:
-      1. Environmental Gating: Environment modulates genomic activation (epigenetic/transcriptional gating).
-      2. Bilinear Multiplicative Interaction: Low-rank Hadamard product between genomic & climate representations.
+    Bilinear interaction only (gate removed):
+      - Genome projection: a = W_G z_G + b_G in R^50
+      - Climate projection: c = W_E z_E + b_E in R^50
+      - Hadamard product: a ⊙ c (element-wise)
+      - LayerNorm(50) -> z_bilinear in R^50
+      - Raw z_G and z_E skip straight to fusion: [z_G, z_E, z_bilinear] in R^150
     """
     def __init__(self, gene_latent_dim=50, env_latent_dim=50, hidden_dim=50):
         super(GxEInteractionModule, self).__init__()
-        # Environmental gating mechanism: sigmoid gate controlling genomic flux
-        self.env_gate = nn.Sequential(
-            nn.Linear(env_latent_dim, gene_latent_dim),
-            nn.Sigmoid()
-        )
-        # Bilinear cross-interaction projection
+        # Bilinear cross-interaction projection (W_G, b_G and W_E, b_E)
         self.proj_geno = nn.Linear(gene_latent_dim, hidden_dim)
         self.proj_env = nn.Linear(env_latent_dim, hidden_dim)
         self.ln_interaction = nn.LayerNorm(hidden_dim)
@@ -75,23 +73,22 @@ class GxEInteractionModule(nn.Module):
         # z_g: (batch_size, gene_latent_dim)
         # z_e: (batch_size, env_latent_dim)
         
-        # 1. Environmental Gating (plasticity filter)
-        gate = self.env_gate(z_e)
-        z_gated = z_g * gate
+        # 1. Genome and Climate projections
+        a = self.proj_geno(z_g)   # (batch_size, 50)
+        c = self.proj_env(z_e)    # (batch_size, 50)
 
-        # 2. Multiplicative G x E Interaction
-        g_proj = self.proj_geno(z_g)
-        e_proj = self.proj_env(z_e)
-        z_bilinear = self.ln_interaction(g_proj * e_proj)
+        # 2. Multiplicative Bilinear G x E Interaction: a ⊙ c + LayerNorm
+        z_bilinear = self.ln_interaction(a * c)  # (batch_size, 50)
 
-        # Joint feature vector: [Genomic, Environmental, Gated-Genomic, Bilinear GxE]
-        fused = torch.cat([z_g, z_e, z_gated, z_bilinear], dim=-1)
+        # 3. Latent fusion (dim 150): [raw z_G, raw z_E, z_bilinear]
+        fused = torch.cat([z_g, z_e, z_bilinear], dim=-1)
         return fused
 
 class GalianaGxE(nn.Module):
     """
     Upgraded Full Galiana Genotype-by-Environment (GxE) Model.
     Predicts plant phenotypes using both genome variation and bioclimatic/environmental factors.
+    Gate removed: bilinear interaction only, 150-dim latent fusion -> P-head (150 -> 100 -> 50 -> 215).
     """
     def __init__(
         self,
@@ -114,23 +111,21 @@ class GalianaGxE(nn.Module):
             nn.LayerNorm(num_genes),
             nn.Dropout(p=0.2),
             nn.Linear(num_genes, gene_latent_dim),
-            nn.LayerNorm(gene_latent_dim),
             nn.Tanh()
         )
 
         # Environmental Module
         self.e_module = EModule(num_env_features=num_env_features, env_embedding_dim=env_latent_dim)
 
-        # GxE Interaction Module
+        # GxE Interaction Module (Bilinear cross-term only, gate removed)
         self.gxe_module = GxEInteractionModule(
             gene_latent_dim=gene_latent_dim,
             env_latent_dim=env_latent_dim,
             hidden_dim=gene_latent_dim
         )
 
-        # Phenotype Prediction Head
-        # fused dimension = gene_latent_dim + env_latent_dim + gene_latent_dim + hidden_dim = 200
-        fused_dim = gene_latent_dim * 3 + env_latent_dim
+        # Phenotype Prediction Head: 150 -> 100 -> 50 -> num_phenotypes
+        fused_dim = gene_latent_dim + env_latent_dim + gene_latent_dim  # 50 + 50 + 50 = 150
         self.p_head = nn.Sequential(
             nn.Dropout(p=0.2),
             nn.Linear(fused_dim, 100),
@@ -156,7 +151,7 @@ class GalianaGxE(nn.Module):
         z_e = self.e_module(x_env)              # (batch_size, 50)
 
         # 3. Model GxE Interactions & Fusion
-        fused = self.gxe_module(z_g, z_e)       # (batch_size, 200)
+        fused = self.gxe_module(z_g, z_e)       # (batch_size, 150)
 
         # 4. Predict Phenotypes
         y_pred = self.p_head(fused)            # (batch_size, num_phenotypes)

@@ -27,47 +27,61 @@ The original Galiana model evaluated phenotypes exclusively from genomic variant
 
 ## 🧬 Architecture Overview
 
-The upgraded model (`GalianaGxE`) features four coordinated neural modules:
+The upgraded model (`GalianaGxE`) features four coordinated neural modules with **explicit Bilinear G×E Interaction** (gate removed for direct multiplicative interaction):
 
 ```
 [ Genomic Variants ] (27,655 genes x 17 types)
          │
     ┌────▼────┐
-    │ G-Module│ (Weight-shared linear layers across all genes)
+    │ G-Module│ (Weight-shared linear layers across all genes: 17 → 50 → 1)
     └────┬────┘
-         │  Scalar gene representations (27,655)
+         │  Scalar gene representations (B, 27,655)
     ┌────▼────────┐
-    │ Projection  │ ──► z_G (Genomic Latent Vector, dim 50)
-    └─────────────┘          │
-                             ├──────────────┬─────────────┐
-                             │              │             │
-[ Bioclimatic Factors ]      │              │             │
-(73 Climate / WorldClim)     │              │             │
-         │                   │              │             │
-    ┌────▼────┐              │              ▼             ▼
-    │ E-Module│ ──► z_E ─────┴──────► [ Bilinear ]   [ Sigmoid Gate ]
-    └─────────┘ (dim 50)               (G x E)          (z_G ⊙ gate)
-                             │              │             │
-                             └──────────────┼─────────────┘
-                                            ▼
-                               [ Fused Latent Vector ] (dim 200)
-                                            │
-                                       ┌────▼────┐
-                                       │ P-Module│
-                                       └────┬────┘
-                                            ▼
-                             [ 215 Quantitative Traits ]
+    │ g_projection│ (LayerNorm → Dropout → Linear 27,655 → 50 → Tanh)
+    └────┬────────┘
+         │  z_G (B, 50)
+         ├──────────────────────────┐
+         │                          ▼
+         │                 ┌───────────────────┐
+         │                 │ Genome Projection │ a = W_G z_G + b_G  (B, 50)
+         │                 └────────┬──────────┘
+         │                          ▼
+[ Bioclimatic Factors ]        [ Hadamard ]  a ⊙ c  (element-wise)
+(73 Climate / WorldClim)            │
+         │                          ▼
+    ┌────▼────┐                [ LayerNorm ] → z_bilinear  (B, 50)
+    │ E-Module│                     ▲
+    └────┬────┘                     │
+         │  z_E (B, 50)    ┌────────┴──────────┐
+         ├─────────────────► Climate Projection│ c = W_E z_E + b_E  (B, 50)
+         │                 └───────────────────┘
+         │                          │
+         ▼                          ▼
+    [ raw z_G ]                [ z_bilinear ]
+         │                          │
+         └──────────┬───────────────┘
+                    ▼
+       [ Fused Latent Vector ]  (B, 150) : [ z_G, z_E, z_bilinear ]
+                    │
+               ┌────▼────┐
+               │ P-Module│  (150 → 100 → 50 → 215)
+               └────┬────┘
+                    ▼
+       [ 215 Quantitative Traits ]
 ```
 
-1. **G-Module (Genomic Variant Encoder):**
-   - Applies weight sharing across all 27,655 genes to project 17-dimensional variant consequence histograms into scalar gene representations.
+1. **G-Module (Genomic Variant Encoder & Projection):**
+   - Applies shared weights across all 27,655 genes ($\text{Linear}(17 \rightarrow 50) \rightarrow \text{LayerNorm} \rightarrow \text{Tanh} \rightarrow \text{Linear}(50 \rightarrow 1)$) to project variant consequence histograms into scalar gene representations.
+   - `g_projection` ($\text{LayerNorm}(27655) \rightarrow \text{Dropout}(0.2) \rightarrow \text{Linear}(27655 \rightarrow 50) \rightarrow \text{Tanh}$) maps whole-genome variation into $z_G \in \mathbb{R}^{50}$.
 2. **E-Module (Environmental Encoder):**
-   - Encodes the 73 bioclimatic variables (WorldClim Bio1–Bio19, evapotranspiration, seasonal temperatures, growing season indicators) through a deep MLP with LayerNorm, GELU, and Dropout into an environmental latent embedding $z_E \in \mathbb{R}^{50}$.
-3. **G×E Interaction Module:**
-   - **Bilinear Multiplicative Interaction:** Models allele-specific climate responses via low-rank Hadamard product $z_{G \times E} = (W_G z_G) \odot (W_E z_E)$.
-   - **Environmental Gating:** Dynamically modulates genomic pathway fluxes via an environmental sigmoid gate $g_E = \sigma(W_{\text{gate}} z_E)$.
+   - Encodes the 73 bioclimatic variables (WorldClim Bio1–Bio19, evapotranspiration, seasonal temperatures, growing season indicators) through a deep MLP ($\text{LayerNorm}(73) \rightarrow \text{Linear}(73 \rightarrow 64) \rightarrow \text{LayerNorm} \rightarrow \text{GELU} \rightarrow \text{Dropout} \rightarrow \text{Linear}(64 \rightarrow 50) \rightarrow \text{LayerNorm} \rightarrow \text{Tanh}$) into an environmental latent embedding $z_E \in \mathbb{R}^{50}$.
+3. **G×E Interaction Module (Bilinear Interaction Only — Gate Removed):**
+   - **Genome Projection:** $a = W_G z_G + b_G \in \mathbb{R}^{50}$
+   - **Climate Projection:** $c = W_E z_E + b_E \in \mathbb{R}^{50}$
+   - **Hadamard Cross-Term:** $z_{\text{bilinear}} = \text{LayerNorm}(a \odot c) \in \mathbb{R}^{50}$
+   - **Latent Skip Fusion:** Raw $z_G$ and $z_E$ skip straight to fusion alongside $z_{\text{bilinear}}$, producing the 150-dimensional joint representation $[z_G, z_E, z_{\text{bilinear}}] \in \mathbb{R}^{150}$.
 4. **P-Module (Multi-task Phenotype Predictor):**
-   - Maps the joint genomic-environmental representation ($[z_G, z_E, z_{G \times E}, z_G \odot g_E]$) to 215 real *A. thaliana* phenotypes simultaneously.
+   - Maps the joint 150-dim genomic-environmental representation through a multi-stage MLP ($\text{Linear}(150 \rightarrow 100) \rightarrow \text{Linear}(100 \rightarrow 50) \rightarrow \text{Linear}(50 \rightarrow 215)$) to predict 215 quantitative *A. thaliana* phenotypes simultaneously.
 
 ---
 
@@ -79,7 +93,7 @@ Evaluated with real whole-genome sequencing calls across 27,655 genes and 73 rea
 | Model Architecture | Input Features | Parameters | Test MSE (↓) | Test MAE (↓) | Top Trait Pearson $r$ (↑) |
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | **EnvironmentalOnly** | 73 Bioclimatic Drivers | 19,325 | 1.0657 | 0.6995 | +0.6009 |
-| **GalianaGxE (Full WGS)** | **27,655 Genes × 17 Variant Bins + 73 Env** | **1,491,786** | **1.0870** | **0.7022** | **+0.6850** |
+| **GalianaGxE (Bilinear G×E)** | **27,655 Genes × 17 Variant Bins + 73 Env** | **1,484,136** | **1.0870** | **0.7022** | **+0.6850** |
 
 #### Top Traits Predicted by GalianaGxE with Real WGS Variants:
 - **Days to Flowering Main Effect (`DTFmainEffect2008`):** $r = \mathbf{+0.6850}$ ($\Delta r = +0.0841$)
